@@ -4,6 +4,7 @@ import {RecordModel} from "./model/record.js";
 import fetch from "node-fetch";
 import https from "https";
 import {extractUserId} from "./jwt.js";
+import {NoticeModel} from "./model/notice.js";
 
 export async function afterConnect(ws, req) {
     let token = req.headers.authorization
@@ -68,6 +69,8 @@ async function noticeParse(ws, notice, token) {
         notice.data.talent_info = resPayload.data
         const noticeMsg = JSON.stringify(notice.data);
         ws.send(noticeMsg)
+        let noticeDocument = new NoticeModel(notice.data)
+        await noticeDocument.save()
     }
 }
 
