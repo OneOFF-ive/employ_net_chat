@@ -1,16 +1,17 @@
 import {connectedUsers} from "./index.js";
-import {validateNotice, validateRecord} from "./volidate.js";
+import {validateNotice, validateRecord} from "./validate.js";
 import {Record} from "./model/record.js";
 import fetch from "node-fetch";
 import https from "https";
 import {extractUserId} from "./jwt.js";
 
-export function afterConnect(ws, req) {
+export async function afterConnect(ws, req) {
     let token = req.headers.authorization
-    if (!token) {
-        // 如果未传入 token，拒绝连接并关闭 WebSocket
+    if (!token || !await validateUser(token)) {
+        // 如果未传入 token或验证失败，拒绝连接并关闭 WebSocket
         return
     }
+
     const userId = extractUserId(token)
     console.log(`A user: ${userId} connected`)
     if (!connectedUsers.has(userId)) {
@@ -68,4 +69,15 @@ async function noticeParse(ws, notice, token) {
         const noticeMsg = JSON.stringify(notice.data);
         ws.send(noticeMsg)
     }
+}
+
+async function validateUser(token) {
+    const res = await fetch("https://127.0.0.1:4040/user/auth", {
+        headers: new Headers({
+            'Authorization': token
+        }),
+        method: "GET",
+        agent: new https.Agent({rejectUnauthorized: false})
+    })
+    return res.status === 200;
 }

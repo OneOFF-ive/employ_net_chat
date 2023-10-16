@@ -7,8 +7,8 @@ import {afterClose, afterConnect, afterReceive} from "./server.js";
 export const connectedUsers = new Map() // 用于存储已连接用户的对象
 
 
-wss.on('connection', (ws, req) => {
-    const result = afterConnect(ws, req)
+wss.on('connection', async (ws, req) => {
+    const result = await afterConnect(ws, req)
     if (!result) {
         ws.close(4000, 'Missing token')
         return
