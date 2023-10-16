@@ -8,4 +8,4 @@ const recordSchema = new Schema({
     is_read: {type: Boolean, require: true}
 })
 
-export const RecordModel = mongoose.model('Record', recordSchema, "records")
+export const RecordModel = mongoose.model('RecordModel', recordSchema, "records")
