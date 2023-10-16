@@ -1,3 +1,5 @@
+// noinspection JSUnresolvedReference
+
 import {connectedUsers} from "./index.js";
 import {validateNotice, validateRecord} from "./validate.js";
 import {RecordModel} from "./model/record.js";
@@ -50,27 +52,51 @@ export function afterClose(ws, userId) {
     }
 }
 
-async function recordParse(ws, record) {
-    let recordDocument = new RecordModel(record)
-    await recordDocument.save()
-    // ws.send(`You sent: ${message}`)
+export function sendMessage(message, userId) {
+    const userWsList = connectedUsers.get(userId)
+    if (userWsList) {
+        for (const userWs of userWsList) {
+            userWs.send(message)
+        }
+    }
 }
 
+async function recordParse(ws, record) {
+    let recordDocument = new RecordModel(record.data)
+    await recordDocument.save()
+    record.data.id = recordDocument._id
+    const receiveUserId = record.data.reception_id
+    sendMessage(JSON.stringify(record.data), receiveUserId)
+}
+
+// noinspection JSUnresolvedReference
 async function noticeParse(ws, notice, token) {
-    const res = await fetch("https://127.0.0.1:4040/talent", {
+    const talentRes = await fetch("https://127.0.0.1:4040/talent", {
         headers: new Headers({
             'Authorization': token
         }),
         method: "GET",
         agent: new https.Agent({rejectUnauthorized: false})
     })
-    if (res.status === 200) {
-        let resPayload = await res.json()
-        notice.data.talent_info = resPayload.data
-        const noticeMsg = JSON.stringify(notice.data);
-        ws.send(noticeMsg)
+    const companyId = notice.data.company_id
+    const userRes = await fetch(`https://127.0.0.1:4040/user/getUserId?companyId=${companyId}`, {
+        headers: new Headers({
+            'Authorization': token
+        }),
+        method: "GET",
+        agent: new https.Agent({rejectUnauthorized: false})
+    })
+    if (talentRes.status === 200 && userRes.status === 200) {
+        let talentResPayload = await talentRes.json()
+        notice.data.talent_info = talentResPayload.data
+        let userResPayload = await userRes.json()
+        const receiveUserId = userResPayload.data
+        // const noticeMsg = JSON.stringify(notice.data)
+        // ws.send(noticeMsg)
         let noticeDocument = new NoticeModel(notice.data)
         await noticeDocument.save()
+        notice.data.id = noticeDocument._id
+        sendMessage(JSON.stringify(notice.data), receiveUserId)
     }
 }
 
