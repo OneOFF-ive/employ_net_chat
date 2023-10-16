@@ -1,4 +1,4 @@
-import mongoose, {Schema} from 'mongoose';
+import mongoose, {Schema} from 'mongoose'
 
 const recordSchema = new Schema({
     send_id: {type: String, require: true},
@@ -8,4 +8,4 @@ const recordSchema = new Schema({
     is_read: {type: Boolean, require: true}
 })
 
-export const Record = mongoose.model('Record', recordSchema, "records")
+export const RecordModel = mongoose.model('Record', recordSchema, "records")

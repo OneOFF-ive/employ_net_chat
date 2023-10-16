@@ -1,6 +1,6 @@
 import {connectedUsers} from "./index.js";
 import {validateNotice, validateRecord} from "./validate.js";
-import {Record} from "./model/record.js";
+import {RecordModel} from "./model/record.js";
 import fetch from "node-fetch";
 import https from "https";
 import {extractUserId} from "./jwt.js";
@@ -50,8 +50,8 @@ export function afterClose(ws, userId) {
 }
 
 async function recordParse(ws, record) {
-    let recordSchema = new Record(record)
-    await recordSchema.save()
+    let recordDocument = new RecordModel(record)
+    await recordDocument.save()
     // ws.send(`You sent: ${message}`)
 }
 
