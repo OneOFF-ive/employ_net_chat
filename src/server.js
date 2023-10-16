@@ -54,7 +54,7 @@ async function recordParse(ws, record) {
     // ws.send(`You sent: ${message}`)
 }
 
-async function noticeParse(ws, notice, token, userId) {
+async function noticeParse(ws, notice, token) {
     const res = await fetch("https://127.0.0.1:4040/talent", {
         headers: new Headers({
             'Authorization': token
