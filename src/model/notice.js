@@ -1,5 +1,4 @@
 import mongoose, {Schema} from 'mongoose'
-import {string} from "zod";
 
 const noticeSchema = new Schema({
     user_id: String,
