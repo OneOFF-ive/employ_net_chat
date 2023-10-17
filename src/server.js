@@ -1,5 +1,3 @@
-// noinspection JSUnresolvedReference
-
 import {connectedUsers} from "./index.js";
 import {validateNotice, validateRecord} from "./validate.js";
 import {RecordModel} from "./model/record.js";
