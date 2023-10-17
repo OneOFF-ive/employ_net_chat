@@ -5,6 +5,8 @@ import fetch from "node-fetch";
 import https from "https";
 import {extractUserId} from "./jwt.js";
 import {NoticeModel} from "./model/notice.js";
+import moment from "moment"
+
 
 export async function afterConnect(ws, req) {
     let token = req.headers.authorization
@@ -58,15 +60,21 @@ export function sendMessage(message, userId) {
         }
     }
 }
+export function customDateSerializer(key, value) {
+    if (key === "send_time") {
+        return moment(value).format('YYYY-MM-DD HH:mm:ss');
+    }
+    return value;
+}
 
 export async function sendUnreadMessage(ws, userId) {
-    const records = await RecordModel.find({reception_id: userId, is_read: false})
+    const records = await RecordModel.find({reception_id: userId, is_read: false}).sort({"send_time": 1})
     const notices = await NoticeModel.find({reception_id: userId, is_read: false})
     for (const notice of notices) {
         ws.send(JSON.stringify(notice))
     }
     for (const record of records) {
-        ws.send(JSON.stringify(record))
+        ws.send(JSON.stringify(record, customDateSerializer))
     }
 }
 
