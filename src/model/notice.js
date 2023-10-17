@@ -3,9 +3,11 @@ import mongoose, {Schema} from 'mongoose'
 const noticeSchema = new Schema({
     user_id: String,
     company_id: String,
+    reception_id: String,
     job_id: String,
     delivery_time: String,
     state: String,
+    is_read: Boolean,
     talent_info: {
         talent_id: String,
         user_id: String,

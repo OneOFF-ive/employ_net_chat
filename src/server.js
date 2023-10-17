@@ -14,13 +14,13 @@ export async function afterConnect(ws, req) {
         // 如果未传入 token或验证失败，拒绝连接并关闭 WebSocket
         return
     }
-
     const userId = extractUserId(token)
     console.log(`A user: ${userId} connected`)
     if (!connectedUsers.has(userId)) {
         connectedUsers.set(userId, [])
     }
     connectedUsers.get(userId).push(ws)
+    await sendUnreadMessage(ws, userId)
     return {token, userId}
 }
 
@@ -61,10 +61,21 @@ export function sendMessage(message, userId) {
     }
 }
 
+export async function sendUnreadMessage(ws, userId) {
+    const records = await RecordModel.find({reception_id: userId, is_read: false})
+    const notices = await NoticeModel.find({reception_id: userId, is_read: false})
+    for (const notice of notices) {
+        ws.send(JSON.stringify(notice))
+    }
+    for (const record of records) {
+        ws.send(JSON.stringify(record))
+    }
+}
+
 async function recordParse(ws, record) {
     let recordDocument = new RecordModel(record.data)
     await recordDocument.save()
-    record.data.id = recordDocument._id
+    record.data._id = recordDocument._id
     const receiveUserId = record.data.reception_id
     sendMessage(JSON.stringify(record.data), receiveUserId)
 }
@@ -91,11 +102,10 @@ async function noticeParse(ws, notice, token) {
         notice.data.talent_info = talentResPayload.data
         let userResPayload = await userRes.json()
         const receiveUserId = userResPayload.data
-        // const noticeMsg = JSON.stringify(notice.data)
-        // ws.send(noticeMsg)
+        notice.data.reception_id = receiveUserId
         let noticeDocument = new NoticeModel(notice.data)
         await noticeDocument.save()
-        notice.data.id = noticeDocument._id
+        notice.data._id = noticeDocument._id
         sendMessage(JSON.stringify(notice.data), receiveUserId)
     }
 }

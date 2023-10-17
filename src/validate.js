@@ -13,7 +13,7 @@ function validateCustomDateTime(value) {
 }
 
 export const recordSchema = z.object({
-    id: z.string().optional(),
+    _id: z.string().optional(),
     send_id: z.string(),
     reception_id: z.string(),
     send_time: z.string().refine(validateCustomDateTime, {
@@ -24,12 +24,14 @@ export const recordSchema = z.object({
 })
 
 export const noticeSchema = z.object({
-    id: z.string().optional(),
+    _id: z.string().optional(),
     user_id: z.string(),
     company_id: z.string(),
+    reception_id: z.string().optional(),
     job_id: z.string(),
     delivery_time: z.string(),
-    state: z.string()
+    state: z.string(),
+    is_read: z.boolean()
 })
 
 export function validateRecord(record) {
