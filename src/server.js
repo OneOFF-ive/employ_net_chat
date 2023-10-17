@@ -126,3 +126,22 @@ async function validateUser(token) {
     })
     return res.status === 200;
 }
+
+export function requireAuth() {
+    return async (req, res, next) => {
+        const token = req.headers.authorization
+        if (!token) return res.sendStatus(401)
+        const authRes = await fetch("https://127.0.0.1:4040/user/auth", {
+            headers: new Headers({
+                'Authorization': token
+            }),
+            method: "GET",
+            agent: new https.Agent({rejectUnauthorized: false})
+        })
+        if (authRes.status === 200) {
+            return next()
+        } else {
+            return res.sendStatus(401)
+        }
+    }
+}
