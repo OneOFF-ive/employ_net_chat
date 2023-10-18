@@ -6,6 +6,7 @@ import https from "https";
 import {extractUserId} from "./jwt.js";
 import {NoticeModel} from "./model/notice.js";
 import moment from "moment"
+import {SessionModel} from "./model/session.js";
 
 
 export async function afterConnect(ws, req) {
@@ -79,6 +80,11 @@ export async function sendUnreadMessage(ws, userId) {
 }
 
 async function recordParse(ws, record) {
+    const sender_id = record.data.send_id
+    const receiver_id = record.data.reception_id
+    const session = await findOrCreateSession(sender_id, receiver_id)
+    record.data.session_id = session._id
+
     let recordDocument = new RecordModel(record.data)
     await recordDocument.save()
     record.data._id = recordDocument._id
@@ -144,4 +150,22 @@ export function requireAuth() {
             return res.sendStatus(401)
         }
     }
+}
+
+async function findOrCreateSession(senderId, receiverId) {
+    const filter = {
+        $or: [
+            {sender_id: senderId, receiver_id: receiverId},
+            {sender_id: receiverId, receiver_id: senderId}
+        ]
+    }
+    let session = await SessionModel.findOne(filter)
+    if (!session) {
+        session = new SessionModel({
+            sender_id: senderId,
+            receiver_id: receiverId
+        })
+        await session.save()
+    }
+    return session
 }
