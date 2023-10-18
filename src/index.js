@@ -2,10 +2,21 @@
 
 import "./setup.js"
 import {server, wss, app} from "./setup.js"
-import {afterClose, afterConnect, afterReceive, requireAuth} from "./server.js";
+import {
+    afterClose,
+    afterConnect,
+    afterReceive,
+    customDateSerializer,
+    findOrCreateSession,
+    requireAuth
+} from "./server.js";
 import {RecordModel} from "./model/record.js";
 import {NoticeModel} from "./model/notice.js";
 import {extractUserId} from "./jwt.js";
+import {SessionModel} from "./model/session.js";
+import fetch from "node-fetch";
+import https from "https";
+import moment from "moment"
 
 export const connectedUsers = new Map() // 用于存储已连接用户的对象
 
@@ -62,7 +73,6 @@ app.get("/page/records", requireAuth(), async (req, res) => {
     const page = parseInt(req.query.page) || 1; // 从请求中获取页码，默认为第一页
     const limit = parseInt(req.query.limit) || 10; // 从请求中获取每页显示的条目数，默认为 10
 
-
     // 计算要跳过的文档数以及限制返回的文档数
     const skip = (page - 1) * limit;
     const filter = {
@@ -95,6 +105,93 @@ app.get("/page/records", requireAuth(), async (req, res) => {
             }
         }
     )
+})
+
+app.get("/chat/view", requireAuth(), async (req, res) => {
+    const token = req.headers.authorization
+    const userId = extractUserId(token)
+    const filter = {
+        $or: [
+            {sender_id: userId},
+            {receiver_id: userId}
+        ]
+    }
+    let resBody = []
+    const sessions = await SessionModel.find(filter)
+    for (let session of sessions) {
+        session = await session
+        let otherUserId
+        if (session.sender_id === userId) otherUserId = session.receiver_id
+        else otherUserId = session.sender_id
+
+
+        const response = await fetch(`https://127.0.0.1:4040/user/id?id=${otherUserId}`, {
+            headers: new Headers({
+                'Authorization': token
+            }),
+            method: "GET",
+            agent: new https.Agent({rejectUnauthorized: false})
+        })
+        if (response.status !== 200) {
+            res.status(400).json({
+                code: "0"
+            })
+            return
+        }
+
+        const latestRecord = await RecordModel.findOne({
+            $or: [
+                {send_id: userId, reception_id: otherUserId},
+                {send_id: otherUserId, reception_id: userId}
+            ]
+        }).sort({send_time: -1}).exec()
+        resBody.push({
+            id: session._id,
+            reciprocal_avatar: response.body.profile_url,
+            reciprocal_name: response.body.name,
+            reciprocal_id: otherUserId,
+            latestRecord: {
+                message_info: latestRecord.message_info,
+                send_time: latestRecord.send_time
+            },
+            info_list: []
+        })
+    }
+    resBody.sort((item1, item2) => item2.latestRecord.send_time - item1.latestRecord.send_time
+    )
+    for (const element of resBody) {
+        const send_time = new Date(element.latestRecord.send_time.toString())
+        element.latestRecord.send_time = moment(send_time).format('YYYY-MM-DD HH:mm:ss')
+    }
+
+    res.status(200).json({
+        message_list: resBody
+    })
+})
+
+app.get("get/session/id", requireAuth(), async (req, res) => {
+    const token = req.headers.authorization
+    const userId = extractUserId(token)
+    const {reception_id: otherUserId} = req.query
+    const session = findOrCreateSession(userId, otherUserId)
+    const response = await fetch(`https://127.0.0.1:4040/user/id?id=${otherUserId}`, {
+        headers: new Headers({
+            'Authorization': token
+        }),
+        method: "GET",
+        agent: new https.Agent({rejectUnauthorized: false})
+    })
+    if (response.status !== 200) {
+        res.status(400).json({
+            code: "0"
+        })
+        return
+    }
+    res.status(200).json({
+        id: session._id,
+        reciprocal_avatar: response.body.profile_url,
+        reciprocal_name: response.body.name,
+    })
 })
 
 app.delete("/delete/records", requireAuth(), async (req, res) => {

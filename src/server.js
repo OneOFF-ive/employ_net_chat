@@ -152,7 +152,7 @@ export function requireAuth() {
     }
 }
 
-async function findOrCreateSession(senderId, receiverId) {
+export async function findOrCreateSession(senderId, receiverId) {
     const filter = {
         $or: [
             {sender_id: senderId, receiver_id: receiverId},
