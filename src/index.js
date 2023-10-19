@@ -1,7 +1,7 @@
 // noinspection JSUnresolvedReference
 
 import "./setup.js"
-import {server, wss, app} from "./setup.js"
+import {wss, app, httpsServer} from "./setup.js"
 import {
     afterClose,
     afterConnect,
@@ -52,7 +52,7 @@ app.post("/update/records", requireAuth(), async (req, res) => {
     const update = {is_read: is_read}
     await RecordModel.updateMany(filter, update)
     res.status(200).json({
-        code: "1"
+        code: 1
     })
 })
 
@@ -62,19 +62,19 @@ app.post("/update/notices", requireAuth(), async (req, res) => {
     const update = {is_read: isRead}
     await NoticeModel.updateMany(filter, update)
     res.status(200).json({
-        code: "1"
+        code: 1
     })
 })
 
 app.get("/page/records", requireAuth(), async (req, res) => {
-    const {other_user_id: otherUserId} = req.query
+    const {reception_id: otherUserId} = req.query
     const token = req.headers.authorization
     const userId = extractUserId(token)
     const page = parseInt(req.query.page) || 1; // 从请求中获取页码，默认为第一页
-    const limit = parseInt(req.query.limit) || 10; // 从请求中获取每页显示的条目数，默认为 10
+    const pageSize = parseInt(req.query.pageSize) || 20; // 从请求中获取每页显示的条目数，默认为 10
 
     // 计算要跳过的文档数以及限制返回的文档数
-    const skip = (page - 1) * limit;
+    const skip = (page - 1) * pageSize;
     const filter = {
         $or: [
             {send_id: userId, reception_id: otherUserId},
@@ -85,20 +85,21 @@ app.get("/page/records", requireAuth(), async (req, res) => {
     // 执行查询，使用 skip 和 limit 来实现分页
     const items = await RecordModel.find(filter)
         .skip(skip)
-        .limit(limit)
+        .limit(pageSize)
+        .sort({ send_time : -1 })
         .exec();
 
     // 计算总文档数以及总页数
     const totalItems = await RecordModel.countDocuments(filter).exec();
-    const totalPages = Math.ceil(totalItems / limit);
+    const totalPages = Math.ceil(totalItems / pageSize);
 
     res.status(200).json({
-            code: "1",
+            code: 1,
             data: {
                 items,
                 pageInfo: {
                     page,
-                    limit,
+                    pageSize: pageSize,
                     totalItems,
                     totalPages,
                 },
@@ -134,7 +135,7 @@ app.get("/chat/view", requireAuth(), async (req, res) => {
         })
         if (response.status !== 200) {
             res.status(400).json({
-                code: "0"
+                code: 0
             })
             return
         }
@@ -145,14 +146,15 @@ app.get("/chat/view", requireAuth(), async (req, res) => {
                 {send_id: otherUserId, reception_id: userId}
             ]
         }).sort({send_time: -1}).exec()
+        const responsePayload = await response.json()
         resBody.push({
             id: session._id,
-            reciprocal_avatar: response.body.profile_url,
-            reciprocal_name: response.body.name,
+            reciprocal_avatar: responsePayload.data.profile_url,
+            reciprocal_name: responsePayload.data.name,
             reciprocal_id: otherUserId,
             latestRecord: {
-                message_info: latestRecord.message_info,
-                send_time: latestRecord.send_time
+                message_info: latestRecord?.message_info,
+                send_time: latestRecord?.send_time
             },
             info_list: []
         })
@@ -165,15 +167,18 @@ app.get("/chat/view", requireAuth(), async (req, res) => {
     }
 
     res.status(200).json({
-        message_list: resBody
+        code: 1,
+        data: {
+            message_list: resBody
+        }
     })
 })
 
-app.get("get/session/id", requireAuth(), async (req, res) => {
+app.get("/get/session/id", requireAuth(), async (req, res) => {
     const token = req.headers.authorization
     const userId = extractUserId(token)
     const {reception_id: otherUserId} = req.query
-    const session = findOrCreateSession(userId, otherUserId)
+    const session = await findOrCreateSession(userId, otherUserId)
     const response = await fetch(`https://127.0.0.1:4040/user/id?id=${otherUserId}`, {
         headers: new Headers({
             'Authorization': token
@@ -183,14 +188,15 @@ app.get("get/session/id", requireAuth(), async (req, res) => {
     })
     if (response.status !== 200) {
         res.status(400).json({
-            code: "0"
+            code: 0
         })
         return
     }
+    const responsePayload = await response.json();
     res.status(200).json({
-        id: session._id,
-        reciprocal_avatar: response.body.profile_url,
-        reciprocal_name: response.body.name,
+        session_id: session._id,
+        reciprocal_avatar: responsePayload.data.profile_url,
+        reciprocal_name: responsePayload.data.name,
     })
 })
 
@@ -199,11 +205,19 @@ app.delete("/delete/records", requireAuth(), async (req, res) => {
     const filter = {_id: {$in: ids}}
     await RecordModel.deleteMany(filter)
     res.status(200).json({
-        code: "1"
+        code: 1
     })
 })
 
-server.listen(8888, "0.0.0.0", () => {
-    console.log(`Server is running on http://localhost:8888`)
+app.post("/session/all/read", requireAuth(), async (req, res) => {
+    const {session_id: sessionId} = req.body
+    await RecordModel.updateMany({session_id: sessionId}, {$set: {is_read: true}})
+    res.status(200).json({
+        code: 1
+    })
+})
+
+httpsServer.listen(4444, "0.0.0.0", () => {
+    console.log(`Https server is running on https://localhost:4444`)
 })
 

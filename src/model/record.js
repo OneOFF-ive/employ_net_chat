@@ -1,6 +1,8 @@
 import mongoose, {Schema} from 'mongoose'
+import {z} from "zod";
 
 const recordSchema = new Schema({
+    type: {type: String, require: true},
     send_id: {type: String, require: true},
     reception_id: {type: String, require: true},
     session_id: {type: String, require: true},

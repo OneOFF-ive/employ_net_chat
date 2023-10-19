@@ -135,6 +135,7 @@ async function validateUser(token) {
 
 export function requireAuth() {
     return async (req, res, next) => {
+        console.log(req.method + " " + req.originalUrl)
         const token = req.headers.authorization
         if (!token) return res.sendStatus(401)
         const authRes = await fetch("https://127.0.0.1:4040/user/auth", {

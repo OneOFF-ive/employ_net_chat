@@ -1,6 +1,7 @@
 import mongoose, {Schema} from 'mongoose'
 
 const noticeSchema = new Schema({
+    type: {type: String, require: true},
     user_id: String,
     company_id: String,
     reception_id: String,

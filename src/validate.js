@@ -14,6 +14,7 @@ function validateCustomDateTime(value) {
 
 export const recordSchema = z.object({
     _id: z.string().optional(),
+    type: z.string(),
     send_id: z.string(),
     reception_id: z.string(),
     session_id: z.string().optional(),
@@ -26,6 +27,7 @@ export const recordSchema = z.object({
 
 export const noticeSchema = z.object({
     _id: z.string().optional(),
+    type: z.string(),
     user_id: z.string(),
     company_id: z.string(),
     reception_id: z.string().optional(),
