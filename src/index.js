@@ -1,12 +1,11 @@
 // noinspection JSUnresolvedReference
 
 import "./setup.js"
-import {wss, app, httpsServer} from "./setup.js"
+import {wss, app, httpsServer, config} from "./setup.js"
 import {
     afterClose,
     afterConnect,
     afterReceive,
-    customDateSerializer,
     findOrCreateSession,
     requireAuth
 } from "./server.js";
@@ -86,7 +85,7 @@ app.get("/page/records", requireAuth(), async (req, res) => {
     const items = await RecordModel.find(filter)
         .skip(skip)
         .limit(pageSize)
-        .sort({ send_time : -1 })
+        .sort({send_time: -1})
         .exec();
 
     // 计算总文档数以及总页数
@@ -126,7 +125,7 @@ app.get("/chat/view", requireAuth(), async (req, res) => {
         else otherUserId = session.sender_id
 
 
-        const response = await fetch(`https://127.0.0.1:4040/user/id?id=${otherUserId}`, {
+        const response = await fetch(`${config.request.base_url}/user/id?id=${otherUserId}`, {
             headers: new Headers({
                 'Authorization': token
             }),
@@ -179,7 +178,7 @@ app.get("/get/session/id", requireAuth(), async (req, res) => {
     const userId = extractUserId(token)
     const {reception_id: otherUserId} = req.query
     const session = await findOrCreateSession(userId, otherUserId)
-    const response = await fetch(`https://127.0.0.1:4040/user/id?id=${otherUserId}`, {
+    const response = await fetch(`${config.request.base_url}/user/id?id=${otherUserId}`, {
         headers: new Headers({
             'Authorization': token
         }),

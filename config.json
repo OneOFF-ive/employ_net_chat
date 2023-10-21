@@ -1,0 +1,20 @@
+{
+  "request": {
+    "base_url": "https://127.0.0.1:4040"
+  },
+  "https": {
+    "key": "../https/lightblueyzj.cn.key",
+    "cert": "../https/lightblueyzj.cn_bundle.crt"
+  },
+  "cors": {
+    "origin": "http://localhost:9527",
+    "credentials": true
+  },
+  "mongodb": {
+    "url": "mongodb://127.0.0.1:27017/employ_net"
+  },
+  "server": {
+    "port": 4444,
+    "path": "/chat"
+  }
+}

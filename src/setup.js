@@ -1,12 +1,14 @@
 import express from 'express'
-import http from "http";
 import https from "https";
 import {WebSocketServer} from 'ws'
 import mongoose from 'mongoose'
 import fs from "fs";
+import cors from "cors";
+import cookieParser from "cookie-parser"
 
+export const config = JSON.parse(fs.readFileSync("../config.json"))
 
-await mongoose.connect('mongodb://127.0.0.1:27017/employ_net')
+await mongoose.connect(config.mongodb.url)
 const db = mongoose.connection
 
 db.on('error', console.error.bind(console, 'MongoDB connection error:'))
@@ -15,16 +17,19 @@ db.once('open', () => {
 })
 
 const httpsOption = {
-    key : fs.readFileSync("../https/lightblueyzj.cn.key"),
-    cert: fs.readFileSync("../https/lightblueyzj.cn_bundle.crt")
+    key : fs.readFileSync(config.https.key),
+    cert: fs.readFileSync(config.https.cert)
 }
 
-
 export const app = express()
-export const httpsServer = https.createServer(httpsOption, app)
-export const wss = new WebSocketServer({path: "/chat", server: httpsServer})
 app.use(express.json())
-
+app.use(cors({
+    origin: config.cors.origin,
+    credentials:config.cors.credentials,
+}))
+app.use(cookieParser())
+export const httpsServer = https.createServer(httpsOption, app)
+export const wss = new WebSocketServer({path: config.server.path, server: httpsServer})
 
 // 全局异常处理器函数
 function globalErrorHandler(err) {

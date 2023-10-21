@@ -7,22 +7,25 @@ import {extractUserId} from "./jwt.js";
 import {NoticeModel} from "./model/notice.js";
 import moment from "moment"
 import {SessionModel} from "./model/session.js";
+import {config} from "./setup.js";
 
 
 export async function afterConnect(ws, req) {
     let token = req.headers.authorization
-    if (!token || !await validateUser(token)) {
-        // 如果未传入 token或验证失败，拒绝连接并关闭 WebSocket
-        return
-    }
-    const userId = extractUserId(token)
-    console.log(`A user: ${userId} connected`)
-    if (!connectedUsers.has(userId)) {
-        connectedUsers.set(userId, [])
-    }
-    connectedUsers.get(userId).push(ws)
-    await sendUnreadMessage(ws, userId)
-    return {token, userId}
+    try {
+        if (!token || !await validateUser(token)) {
+            // 如果未传入 token或验证失败，拒绝连接并关闭 WebSocket
+            return
+        }
+        const userId = extractUserId(token)
+        console.log(`A user: ${userId} connected`)
+        if (!connectedUsers.has(userId)) {
+            connectedUsers.set(userId, [])
+        }
+        connectedUsers.get(userId).push(ws)
+        await sendUnreadMessage(ws, userId)
+        return {token, userId}
+    } catch (e) {}
 }
 
 export async function afterReceive(ws, message, token, userId) {
@@ -61,6 +64,7 @@ export function sendMessage(message, userId) {
         }
     }
 }
+
 export function customDateSerializer(key, value) {
     if (key === "send_time") {
         return moment(value).format('YYYY-MM-DD HH:mm:ss');
@@ -94,7 +98,7 @@ async function recordParse(ws, record) {
 
 // noinspection JSUnresolvedReference
 async function noticeParse(ws, notice, token) {
-    const talentRes = await fetch("https://127.0.0.1:4040/talent", {
+    const talentRes = await fetch(`${config.request.base_url}/talent`, {
         headers: new Headers({
             'Authorization': token
         }),
@@ -102,7 +106,7 @@ async function noticeParse(ws, notice, token) {
         agent: new https.Agent({rejectUnauthorized: false})
     })
     const companyId = notice.data.company_id
-    const userRes = await fetch(`https://127.0.0.1:4040/user/getUserId?companyId=${companyId}`, {
+    const userRes = await fetch(`${config.request.base_url}/user/getUserId?companyId=${companyId}`, {
         headers: new Headers({
             'Authorization': token
         }),
@@ -123,7 +127,7 @@ async function noticeParse(ws, notice, token) {
 }
 
 async function validateUser(token) {
-    const res = await fetch("https://127.0.0.1:4040/user/auth", {
+    const res = await fetch(`${config.request.base_url}/user/auth`, {
         headers: new Headers({
             'Authorization': token
         }),
@@ -138,7 +142,7 @@ export function requireAuth() {
         console.log(req.method + " " + req.originalUrl)
         const token = req.headers.authorization
         if (!token) return res.sendStatus(401)
-        const authRes = await fetch("https://127.0.0.1:4040/user/auth", {
+        const authRes = await fetch(`${config.request.base_url}/user/auth`, {
             headers: new Headers({
                 'Authorization': token
             }),
