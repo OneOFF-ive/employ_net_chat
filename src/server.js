@@ -1,13 +1,13 @@
 import {connectedUsers} from "./index.js";
 import {validateNotice, validateRecord} from "./validate.js";
 import {RecordModel} from "./model/record.js";
-import fetch from "node-fetch";
 import https from "https";
 import {extractUserId} from "./jwt.js";
 import {NoticeModel} from "./model/notice.js";
 import moment from "moment"
 import {SessionModel} from "./model/session.js";
 import {config} from "./setup.js";
+import http from "http";
 
 
 export async function afterConnect(ws, req) {
@@ -25,7 +25,10 @@ export async function afterConnect(ws, req) {
         connectedUsers.get(userId).push(ws)
         await sendUnreadMessage(ws, userId)
         return {token, userId}
-    } catch (e) {}
+    } catch (e) {
+        console.log("捕获到异常：", e.message);
+        console.log("异常堆栈：", e.stack);
+    }
 }
 
 export async function afterReceive(ws, message, token, userId) {
@@ -86,8 +89,8 @@ export async function sendUnreadMessage(ws, userId) {
 async function recordParse(ws, record) {
     const sender_id = record.data.send_id
     const receiver_id = record.data.reception_id
-    const session = await findOrCreateSession(sender_id, receiver_id)
-    record.data.session_id = session._id
+    // const session = await findOrCreateSession(sender_id, receiver_id)
+    // record.data.session_id = session._id
 
     let recordDocument = new RecordModel(record.data)
     await recordDocument.save()
@@ -136,7 +139,6 @@ async function validateUser(token) {
     })
     return res.status === 200;
 }
-
 export function requireAuth() {
     return async (req, res, next) => {
         console.log(req.method + " " + req.originalUrl)

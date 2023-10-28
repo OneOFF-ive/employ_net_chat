@@ -1,7 +1,7 @@
 // noinspection JSUnresolvedReference
 
 import "./setup.js"
-import {wss, app, httpsServer, config} from "./setup.js"
+import {wss, app, httpServer, config} from "./setup.js"
 import {
     afterClose,
     afterConnect,
@@ -65,6 +65,25 @@ app.post("/update/notices", requireAuth(), async (req, res) => {
     })
 })
 
+app.get("/get/notices", requireAuth(), async (req, res) => {
+    const token = req.headers.authorization
+    const userId = extractUserId(token)
+    const notices = await NoticeModel.find({user_id: userId})
+    res.status(200).json({
+        code: 1,
+        data: {notices}
+    })
+})
+
+app.get("/get/notices/by/company/id", requireAuth(), async (req, res) => {
+    const {companyId} = req.query
+    const notices = await NoticeModel.find({company_id: userId})
+    res.status(200).json({
+        code: 1,
+        data: {notices}
+    })
+})
+
 app.get("/page/records", requireAuth(), async (req, res) => {
     const {reception_id: otherUserId} = req.query
     const token = req.headers.authorization
@@ -85,7 +104,7 @@ app.get("/page/records", requireAuth(), async (req, res) => {
     const items = await RecordModel.find(filter)
         .skip(skip)
         .limit(pageSize)
-        .sort({send_time: -1})
+        .sort({send_time: 1})
         .exec();
 
     // 计算总文档数以及总页数
@@ -161,8 +180,10 @@ app.get("/chat/view", requireAuth(), async (req, res) => {
     resBody.sort((item1, item2) => item2.latestRecord.send_time - item1.latestRecord.send_time
     )
     for (const element of resBody) {
-        const send_time = new Date(element.latestRecord.send_time.toString())
-        element.latestRecord.send_time = moment(send_time).format('YYYY-MM-DD HH:mm:ss')
+        if (element.latestRecord.send_time) {
+            const send_time = new Date(element.latestRecord.send_time?.toString())
+            element.latestRecord.send_time = moment(send_time).format('YYYY-MM-DD HH:mm:ss')
+        }
     }
 
     res.status(200).json({
@@ -216,7 +237,11 @@ app.post("/session/all/read", requireAuth(), async (req, res) => {
     })
 })
 
-httpsServer.listen(4444, "0.0.0.0", () => {
-    console.log(`Https server is running on https://localhost:4444`)
+// httpsServer.listen(4444, "0.0.0.0", () => {
+//     console.log(`Https server is running on https://localhost:4444`)
+// })
+
+httpServer.listen(8899, "0.0.0.0", () => {
+    console.log(`Http server is running on http://localhost:8899`)
 })
 

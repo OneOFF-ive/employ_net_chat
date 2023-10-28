@@ -17,7 +17,7 @@ export const recordSchema = z.object({
     type: z.string(),
     send_id: z.string(),
     reception_id: z.string(),
-    session_id: z.string().optional(),
+    session_id: z.string(),
     send_time: z.string().refine(validateCustomDateTime, {
         message: 'Invalid date time format. Use YYYY-MM-DD HH:MM:SS',
     }),

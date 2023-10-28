@@ -1,5 +1,6 @@
 import express from 'express'
 import https from "https";
+import http from "http";
 import {WebSocketServer} from 'ws'
 import mongoose from 'mongoose'
 import fs from "fs";
@@ -29,7 +30,8 @@ app.use(cors({
 }))
 app.use(cookieParser())
 export const httpsServer = https.createServer(httpsOption, app)
-export const wss = new WebSocketServer({path: config.server.path, server: httpsServer})
+export const httpServer = http.createServer(app)
+export const wss = new WebSocketServer({path: config.server.path, server: httpServer})
 
 // 全局异常处理器函数
 function globalErrorHandler(err) {

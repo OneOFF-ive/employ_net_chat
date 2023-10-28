@@ -1,6 +1,6 @@
 {
   "request": {
-    "base_url": "https://127.0.0.1:4040"
+    "base_url": "http://localhost:8080"
   },
   "https": {
     "key": "../https/lightblueyzj.cn.key",
@@ -11,7 +11,7 @@
     "credentials": true
   },
   "mongodb": {
-    "url": "mongodb://127.0.0.1:27017/employ_net"
+    "url": "mongodb://localhost:27017/employ_net"
   },
   "server": {
     "port": 4444,
