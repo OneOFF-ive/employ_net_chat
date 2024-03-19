@@ -204,7 +204,7 @@ app.get("/get/session/id", requireAuth(), async (req, res) => {
 })
 
 app.delete("/delete/records", requireAuth(), async (req, res) => {
-    const {ids} = req.body
+    const {ids} = req.query
     const filter = {_id: {$in: ids}}
     await RecordModel.deleteMany(filter)
     res.status(200).json({
@@ -224,7 +224,7 @@ app.post("/session/all/read", requireAuth(), async (req, res) => {
 //     console.log(`Https server is running on https://localhost:4444`)
 // })
 
-httpServer.listen(8899, "0.0.0.0", () => {
+httpServer.listen(config.server.port, "0.0.0.0", () => {
     console.log(`Http server is running on http://localhost:8899`)
 })
 
