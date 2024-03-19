@@ -3,18 +3,13 @@
 import "./setup.js"
 import {wss, app, httpServer, config} from "./setup.js"
 import {
-    afterClose,
-    afterConnect,
-    afterReceive,
-    findOrCreateSession,
-    requireAuth
+    afterClose, afterConnect, afterReceive, findOrCreateSession, requireAuth
 } from "./server.js";
 import {RecordModel} from "./model/record.js";
 import {NoticeModel} from "./model/notice.js";
 import {extractUserId} from "./jwt.js";
 import {SessionModel} from "./model/session.js";
 import fetch from "node-fetch";
-import https from "https";
 import moment from "moment"
 
 export const connectedUsers = new Map() // 用于存储已连接用户的对象
@@ -70,17 +65,27 @@ app.get("/get/notices", requireAuth(), async (req, res) => {
     const userId = extractUserId(token)
     const notices = await NoticeModel.find({user_id: userId})
     res.status(200).json({
-        code: 1,
-        data: {notices}
+        code: 1, data: {notices}
     })
 })
 
 app.get("/get/notices/by/company/id", requireAuth(), async (req, res) => {
     const {companyId} = req.query
-    const notices = await NoticeModel.find({company_id: userId})
+    const notices = await NoticeModel.find({company_id: companyId})
+    res.status(200).json({
+        code: 1, data: {notices}
+    })
+})
+
+app.get("/session/records", requireAuth(), async (req, res) => {
+    const {sessionId} = req.query
+    const filter = {session_id: sessionId}
+    const items = await RecordModel.find(filter)
+        .sort({send_time: 1})
+        .exec();
     res.status(200).json({
         code: 1,
-        data: {notices}
+        data: items,
     })
 })
 
@@ -94,10 +99,7 @@ app.get("/page/records", requireAuth(), async (req, res) => {
     // 计算要跳过的文档数以及限制返回的文档数
     const skip = (page - 1) * pageSize;
     const filter = {
-        $or: [
-            {send_id: userId, reception_id: otherUserId},
-            {send_id: otherUserId, reception_id: userId}
-        ]
+        $or: [{send_id: userId, reception_id: otherUserId}, {send_id: otherUserId, reception_id: userId}]
     }
 
     // 执行查询，使用 skip 和 limit 来实现分页
@@ -112,28 +114,19 @@ app.get("/page/records", requireAuth(), async (req, res) => {
     const totalPages = Math.ceil(totalItems / pageSize);
 
     res.status(200).json({
-            code: 1,
-            data: {
-                items,
-                pageInfo: {
-                    page,
-                    pageSize: pageSize,
-                    totalItems,
-                    totalPages,
-                },
-            }
+        code: 1, data: {
+            items, pageInfo: {
+                page, pageSize: pageSize, totalItems, totalPages,
+            },
         }
-    )
+    })
 })
 
 app.get("/chat/view", requireAuth(), async (req, res) => {
     const token = req.headers.authorization
     const userId = extractUserId(token)
     const filter = {
-        $or: [
-            {sender_id: userId},
-            {receiver_id: userId}
-        ]
+        $or: [{sender_id: userId}, {receiver_id: userId}]
     }
     let resBody = []
     const sessions = await SessionModel.find(filter)
@@ -147,9 +140,7 @@ app.get("/chat/view", requireAuth(), async (req, res) => {
         const response = await fetch(`${config.request.base_url}/user/id?id=${otherUserId}`, {
             headers: new Headers({
                 'Authorization': token
-            }),
-            method: "GET",
-            agent: new https.Agent({rejectUnauthorized: false})
+            }), method: "GET"
         })
         if (response.status !== 200) {
             res.status(400).json({
@@ -159,36 +150,29 @@ app.get("/chat/view", requireAuth(), async (req, res) => {
         }
 
         const latestRecord = await RecordModel.findOne({
-            $or: [
-                {send_id: userId, reception_id: otherUserId},
-                {send_id: otherUserId, reception_id: userId}
-            ]
+            $or: [{send_id: userId, reception_id: otherUserId}, {send_id: otherUserId, reception_id: userId}]
         }).sort({send_time: -1}).exec()
-        const responsePayload = await response.json()
-        resBody.push({
-            id: session._id,
-            reciprocal_avatar: responsePayload.data.profile_url,
-            reciprocal_name: responsePayload.data.name,
-            reciprocal_id: otherUserId,
-            latestRecord: {
-                message_info: latestRecord?.message_info,
-                send_time: latestRecord?.send_time
-            },
-            info_list: []
-        })
-    }
-    resBody.sort((item1, item2) => item2.latestRecord.send_time - item1.latestRecord.send_time
-    )
-    for (const element of resBody) {
-        if (element.latestRecord.send_time) {
-            const send_time = new Date(element.latestRecord.send_time?.toString())
-            element.latestRecord.send_time = moment(send_time).format('YYYY-MM-DD HH:mm:ss')
+        if (latestRecord) {
+            const responsePayload = await response.json()
+            resBody.push({
+                id: session._id,
+                reciprocal_avatar: responsePayload.data.profile_url,
+                reciprocal_name: responsePayload.data.name,
+                reciprocal_id: otherUserId,
+                latest_record: latestRecord,
+            })
         }
     }
+    // resBody.sort((item1, item2) => item2.latestRecord.send_time - item1.latestRecord.send_time)
+    // for (const element of resBody) {
+    //     if (element.latest_record.send_time) {
+    //         const send_time = new Date(element.send_time?.toString())
+    //         element.latest_record.send_time= moment(send_time).format('YYYY-MM-DD HH:mm:ss')
+    //     }
+    // }
 
     res.status(200).json({
-        code: 1,
-        data: {
+        code: 1, data: {
             message_list: resBody
         }
     })
@@ -197,14 +181,12 @@ app.get("/chat/view", requireAuth(), async (req, res) => {
 app.get("/get/session/id", requireAuth(), async (req, res) => {
     const token = req.headers.authorization
     const userId = extractUserId(token)
-    const {reception_id: otherUserId} = req.query
+    const {otherUserId} = req.query
     const session = await findOrCreateSession(userId, otherUserId)
     const response = await fetch(`${config.request.base_url}/user/id?id=${otherUserId}`, {
         headers: new Headers({
             'Authorization': token
-        }),
-        method: "GET",
-        agent: new https.Agent({rejectUnauthorized: false})
+        }), method: "GET"
     })
     if (response.status !== 200) {
         res.status(400).json({
@@ -214,9 +196,10 @@ app.get("/get/session/id", requireAuth(), async (req, res) => {
     }
     const responsePayload = await response.json();
     res.status(200).json({
-        session_id: session._id,
+        id: session._id,
         reciprocal_avatar: responsePayload.data.profile_url,
         reciprocal_name: responsePayload.data.name,
+        reciprocal_id: otherUserId,
     })
 })
 
@@ -230,7 +213,7 @@ app.delete("/delete/records", requireAuth(), async (req, res) => {
 })
 
 app.post("/session/all/read", requireAuth(), async (req, res) => {
-    const {session_id: sessionId} = req.body
+    const {sessionId} = req.body
     await RecordModel.updateMany({session_id: sessionId}, {$set: {is_read: true}})
     res.status(200).json({
         code: 1

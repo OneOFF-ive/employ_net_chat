@@ -14,7 +14,7 @@
     "url": "mongodb://localhost:27017/employ_net"
   },
   "server": {
-    "port": 4444,
+    "port": 8899,
     "path": "/chat"
   }
 }

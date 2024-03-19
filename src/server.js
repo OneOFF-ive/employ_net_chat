@@ -23,7 +23,7 @@ export async function afterConnect(ws, req) {
             connectedUsers.set(userId, [])
         }
         connectedUsers.get(userId).push(ws)
-        await sendUnreadMessage(ws, userId)
+        // await sendUnreadMessage(ws, userId)
         return {token, userId}
     } catch (e) {
         console.log("捕获到异常：", e.message);
